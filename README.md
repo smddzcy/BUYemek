@@ -1,2 +1,2 @@
 # BUYemek
-REST API for Boğaziçi University's cafeteria.
+REST API for Boğaziçi University's cafeteria app.
