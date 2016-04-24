@@ -1,0 +1,8 @@
+{
+    "name": "smddzcy/bounyemekhane-rest-api",
+    "description": "REST API for BounYemekhane app.",
+    "require": {
+        "smalot/pdfparser": "^0.9.25",
+        "luracast/restler": "^3.0"
+    }
+}
