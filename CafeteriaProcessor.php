@@ -18,7 +18,7 @@ class CafeteriaProcessor extends Processor
             CURLOPT_HEADER => true
         ]));
 
-        exec("pdftohtml yemek_listesi.pdf temp && rm temp*png && rm temp.html && rm temp_ind.html && mv temps.html " . Constants::MENU_RAWDATA_FILENAME);
+        exec("/usr/local/bin/pdftohtml yemek_listesi.pdf temp && rm temp*png && rm temp.html && rm temp_ind.html && mv temps.html " . Constants::MENU_RAWDATA_FILENAME);
 
         if (!file_exists(Constants::MENU_RAWDATA_FILENAME)) {
             throw new RestException(412, "Something went terribly wrong, pdftotext library didn't work as expected.");
@@ -42,7 +42,7 @@ class CafeteriaProcessor extends Processor
     public static function fetchNewMenu()
     {
         if (!file_exists(Constants::MENU_RAWDATA_FILENAME)) {
-            $rawData = explode("\n", self::getRawData());
+            $rawData = explode("\n", (new CafeteriaProcessor())->getRawData());
         } else {
             $rawData = explode("\n", file_get_contents(Constants::MENU_RAWDATA_FILENAME));
         }
@@ -62,7 +62,7 @@ class CafeteriaProcessor extends Processor
         foreach (array_keys($dayLines) as $k => $line) {
             $tempArray = [];
             $day = implode("/", array_reverse(explode(".", $dayLines[$line]))); // Y/m/d formatted day
-
+            
             $tempArray[Constants::LUNCH_MENU_IDENTIFIER_CHAR][] = $rawData[$line - 2];
             $tempArray[Constants::DINNER_MENU_IDENTIFIER_CHAR][] = $rawData[$line - 1];
 
@@ -194,26 +194,46 @@ class CafeteriaProcessor extends Processor
             throw new RestException(400, "Input is not valid.");
         }
 
+        $changeForCalorieList = [
+            "ÇORBASI" => "ÇORBA",
+            "ç" => "c",
+            "ş" => "s",
+            "ğ" => "g",
+            "ı" => "i",
+            "ö" => "o",
+            "ü" => "u",
+            "Ç" => "C",
+            "Ş" => "S",
+            "Ğ" => "G",
+            "İ" => "I",
+            "Ö" => "O",
+            "Ü" => "U"
+        ];
+
         if (count($foodName) == 0) return new stdClass(); // return an empty class instead of an empty array to solve casting (to Dictionary) problem in json decoding with swift
 
         // separate multiple foods
         list($groupedFoods, $foodName) = array_values(self::splitMultipleFoods($foodName));
 
-        $data = self::getDataFromDBWithFoodName("calories", $foodName);
+        $data = self::getDataFromDBWithFoodName("calories", str_replace(array_keys($changeForCalorieList), array_values($changeForCalorieList), $foodName));
 
         $calorieList = [];
         foreach ($data as $infoTuple) {
-            $calorieList[$infoTuple["food_name"]] = $infoTuple["food_calorie"];
+            $calorieListFoodName = mb_strtoupper(str_replace(array_keys($changeForCalorieList), array_values($changeForCalorieList), $infoTuple["food_name"]));
+            $calorieList[$calorieListFoodName] = $infoTuple["food_calorie"];
         }
 
         $returnList = [];
         foreach ($groupedFoods as $_foodName) {
             if (!is_array($_foodName)) {
-                if (isset($calorieList[$_foodName]))
-                    $returnList[$_foodName] = $calorieList[$_foodName];
+                $upperFoodName = mb_strtoupper(str_replace(array_keys($changeForCalorieList), array_values($changeForCalorieList), $_foodName));
+                if (array_key_exists($upperFoodName, $calorieList)){
+                    $returnList[$_foodName] = $calorieList[$upperFoodName];
+                }
             } else {
                 $caloriesString = "";
-                array_walk($_foodName, function ($val) use (&$caloriesString, $calorieList) {
+                array_walk($_foodName, function ($val) use (&$caloriesString, $calorieList, $changeForCalorieList) {
+                    $val = mb_strtoupper(str_replace(array_keys($changeForCalorieList), array_values($changeForCalorieList),$val));
                     if (isset($calorieList[$val]))
                         $caloriesString .= $calorieList[$val] . " / ";
                     else {
