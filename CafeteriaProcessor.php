@@ -54,15 +54,18 @@ class CafeteriaProcessor extends Processor
 
         $db = DB::getInstance();
 
+        var_dump($rawData);
+
         /*
          * Parse dates & menus
          */
-        $dayLines = preg_grep("#[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}#si", $rawData); // find which lines contain the date
+        $dayRegex = "#\s*\d{2}\s*/\s*\d{2}\s*/\s*\d{4}\s*#si";
+        $dayLines = preg_grep($dayRegex, $rawData); // find which lines contain the date
         $foodList = [];
         foreach (array_keys($dayLines) as $k => $line) {
             $tempArray = [];
-            $day = implode("/", array_reverse(explode(".", $dayLines[$line]))); // Y/m/d formatted day
-            
+            $day = implode("/", array_reverse(explode("/", preg_replace("#\s#", "", $dayLines[$line])))); // Y/m/d formatted day
+
             $tempArray[Constants::LUNCH_MENU_IDENTIFIER_CHAR][] = $rawData[$line - 2];
             $tempArray[Constants::DINNER_MENU_IDENTIFIER_CHAR][] = $rawData[$line - 1];
 
@@ -72,10 +75,12 @@ class CafeteriaProcessor extends Processor
             }
 
             $textToCheck = join("", $tempArray[Constants::LUNCH_MENU_IDENTIFIER_CHAR]) . join("", $tempArray[Constants::DINNER_MENU_IDENTIFIER_CHAR]);
-            if (preg_match("#[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}#si", $textToCheck)) continue; // no full-valid menu info
+            if (preg_match($dayRegex, $textToCheck)) continue; // no full-valid menu info
 
             $foodList[$day] = $tempArray;
         }
+
+        var_dump($foodList);
 
         /*
          * Parse calories, insert into the database
@@ -360,7 +365,7 @@ class CafeteriaProcessor extends Processor
         }
 
         if (count($foodName) == 0) return new stdClass();
-        
+
         $db = DB::getInstance();
 
         // concatenation is made on purpose. (PHPStorm's red alerts)
