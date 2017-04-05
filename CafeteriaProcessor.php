@@ -54,8 +54,6 @@ class CafeteriaProcessor extends Processor
 
         $db = DB::getInstance();
 
-        var_dump($rawData);
-
         /*
          * Parse dates & menus
          */
@@ -79,8 +77,6 @@ class CafeteriaProcessor extends Processor
 
             $foodList[$day] = $tempArray;
         }
-
-        var_dump($foodList);
 
         /*
          * Parse calories, insert into the database
